@@ -1,46 +1,43 @@
 name: meta-dm
-version: "0.1"
+version: "0.2"
+purpose: historical_conversation_retrieval
 
 worlds:
   instagram:
-    role: external messaging world
-  meta:
-    role: API and webhook boundary
-  github:
-    role: canonical development/data world
-  agent:
-    role: analysis and interaction world
-  view:
-    role: human-readable presentation world
+    role: source
+  meta_api:
+    role: interface
+  cli:
+    role: skill
+  local_history:
+    role: canonical_storage
+  gh_aw:
+    role: downstream_analysis
 
 interfaces:
   - from: instagram
-    to: meta
-    through: messaging_api
-  - from: meta
-    to: github
-    through: webhook_or_sync
-  - from: github
-    to: agent
-    through: gh_aw
-  - from: agent
-    to: github
-    through: derived_events
-  - from: github
-    to: view
-    through: github_pages
+    to: meta_api
+    via: messaging_api
+  - from: meta_api
+    to: cli
+    via: paginated_history
+  - from: cli
+    to: local_history
+    via: jsonl
+  - from: local_history
+    to: gh_aw
+    via: derived_analysis
 
 flow:
-  - observe
-  - ingest
+  - identify
+  - retrieve_newest
+  - paginate_older
   - normalize
+  - deduplicate
   - persist
-  - analyze
-  - draft
-  - present
+  - report
 
-boundary_rules:
-  - raw_external_payloads_are_untrusted
-  - credentials_never_cross_into_public_data
-  - derived_events_do_not_replace_source_events
-  - gui_is_not_the_canonical_store
+boundary:
+  - gui_is_not_canonical
+  - credentials_do_not_enter_history
+  - derived_data_does_not_replace_source_history
