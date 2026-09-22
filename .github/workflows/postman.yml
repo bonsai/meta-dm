@@ -1,0 +1,30 @@
+name: Postman API Contract
+
+on:
+  workflow_dispatch:
+    inputs:
+      collection_id:
+        description: "Postman collection UID to run"
+        required: true
+        type: string
+      environment_id:
+        description: "Optional Postman environment UID"
+        required: false
+        type: string
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Postman collection
+        uses: postmanlabs/postman-cli-action@v1
+        with:
+          command: >-
+            collection run ${{ inputs.collection_id }}
+            ${{ inputs.environment_id != '' && format('--environment {0}', inputs.environment_id) || '' }}
+            --bail
+          api-key: ${{ secrets.POSTMAN_API_KEY }}
