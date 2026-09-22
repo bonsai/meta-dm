@@ -1,52 +1,36 @@
 name: meta-dm
-version: "0.1"
+version: "0.2"
 domain: instagram_messaging
+primary_use_case: conversation_history_retrieval
 
 entities:
-  account:
-    description: Instagram Professional Account connected to the Meta app.
   conversation:
-    description: Message thread associated with an Instagram account.
-  participant:
-    description: Actor participating in a conversation.
+    key: external_id
   message:
-    description: A message exchanged in a conversation.
-  event:
-    description: An observed state change or webhook/API observation.
-  draft:
-    description: Agent-generated candidate response; not a sent message.
+    key: external_id
+  participant:
+    key: external_id
   sync:
-    description: A synchronization operation and its checkpoint.
+    key: conversation_id
 
 relations:
-  - subject: account
-    predicate: owns
-    object: conversation
-  - subject: conversation
-    predicate: contains
-    object: message
-  - subject: participant
-    predicate: sends
-    object: message
-  - subject: message
-    predicate: belongs_to
-    object: conversation
-  - subject: event
-    predicate: observes
-    object: message
-  - subject: draft
-    predicate: responds_to
-    object: message
-  - subject: sync
-    predicate: observes
-    object: event
+  - conversation_contains_message
+  - participant_sends_message
+  - sync_retrieves_conversation
+  - sync_reaches_older_page
 
-event_types:
-  - message_received
-  - message_sent
-  - conversation_observed
-  - webhook_received
-  - sync_started
-  - sync_completed
-  - sync_failed
-  - reply_drafted
+operations:
+  - identify_conversation
+  - retrieve_page
+  - paginate_older
+  - normalize_message
+  - deduplicate
+  - persist_history
+  - report_sync
+
+stop_conditions:
+  - limit_reached
+  - before_reached
+  - no_next_page
+  - api_boundary
+  - error
