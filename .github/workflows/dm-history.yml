@@ -32,20 +32,38 @@ jobs:
         with:
           go-version: "stable"
 
+      - name: Preflight
+        env:
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+          META_GRAPH_VERSION: ${{ secrets.META_GRAPH_VERSION }}
+        run: |
+          set -euo pipefail
+          echo "go=$(go version)"
+          echo "repo=$(git rev-parse --short HEAD)"
+          test -n "$META_ACCESS_TOKEN" || { echo "::error::META_ACCESS_TOKEN is missing"; exit 1; }
+          test -n "$META_IG_USER_ID" || { echo "::error::META_IG_USER_ID is missing"; exit 1; }
+          test -n "$META_GRAPH_VERSION" || { echo "::error::META_GRAPH_VERSION is missing"; exit 1; }
+          go test ./...
+          go build -o meta-dm ./cmd/meta-dm
+          ./meta-dm
+
       - name: Retrieve DM history
         env:
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
           META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
           META_GRAPH_VERSION: ${{ secrets.META_GRAPH_VERSION }}
         run: |
-          args="history ${{ inputs.conversation_id }} --all"
-          if [ -n "${{ inputs.before }}" ]; then
-            args="$args --before '${{ inputs.before }}'"
+          set -euo pipefail
+          args=(history "${{ inputs.conversation_id }}" --all)
+          if [[ -n "${{ inputs.before }}" ]]; then
+            args+=(--before "${{ inputs.before }}")
           fi
-          go run ./cmd/meta-dm $args
+          ./meta-dm "${args[@]}"
 
       - name: Build private archive
         run: |
+          set -euo pipefail
           mkdir -p private-archive
           cp -R data/messages private-archive/
           cp -R data/sync private-archive/
