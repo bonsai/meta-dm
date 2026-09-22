@@ -2,3 +2,4 @@
 data/messages/*.jsonl
 data/sync/*.json
 .env
+ .meta-dm/
