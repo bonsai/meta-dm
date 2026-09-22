@@ -1,0 +1,4 @@
+# Real DM data must not be committed.
+data/messages/*.jsonl
+data/sync/*.json
+.env
