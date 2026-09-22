@@ -6,42 +6,58 @@
 
 ## Role
 
-Observe and normalize Instagram direct-message events for the Meta DM system.
+A CLI skill that retrieves the history of one specified Instagram DM conversation and preserves it as a local canonical event stream.
 
-## Concern
+## Primary concern
 
-Reliable access to the DM event stream without making the GUI the source of truth.
+> 「このチャットを、可能なところまで過去へさかのぼって保存する」
 
-## Aware
+## Operation
 
-- Meta API permissions and account boundaries
-- webhook delivery and replay
-- message/conversation identity
-- event ordering and idempotency
-- privacy and secret handling
-- separation of raw data, normalized events, and analysis
+```text
+identify
+→ fetch
+→ paginate
+→ normalize
+→ dedupe
+→ persist
+→ report
+```
 
-## Interface
+## Inputs
 
-Input:
-- Meta webhook events
-- Meta messaging API responses
-- explicit CLI commands
+- Instagram conversation identifier
+- authenticated Meta access token
+- optional limit
+- optional cutoff timestamp
 
-Output:
-- normalized DM events
+## Outputs
+
+- normalized message JSONL
 - sync state
-- analysis-ready JSONL
-- response drafts as separate derived artifacts
-
-## Operations
-
-`observe → ingest → normalize → persist → analyze → present`
+- retrieval statistics
 
 ## Invariants
 
-1. External IDs are never replaced by local IDs.
-2. Ingestion is idempotent.
-3. Raw events and derived analysis remain distinct.
-4. A generated reply is never represented as an incoming user message.
-5. Credentials never enter repository data.
+1. Meta external message IDs remain unchanged.
+2. Re-running a history operation is idempotent.
+3. Older pages are traversed until a declared stop condition.
+4. Raw source and normalized records remain distinguishable.
+5. Incoming messages and generated replies are never conflated.
+6. Credentials never enter persisted message data.
+
+## Non-goals
+
+- arbitrary users' private messages;
+- GUI automation;
+- automatic reply sending;
+- classification as the primary operation;
+- webhook-first architecture.
+
+## Skill interface
+
+```text
+meta-dm conversations
+meta-dm history <conversation_id> [--limit N] [--before ISO8601] [--all]
+meta-dm search <conversation_id> <query>
+```
