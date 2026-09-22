@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
+	"strconv"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -38,11 +40,48 @@ func main() {
 	switch os.Args[1] {
 	case "conversations": err=conversations(os.Args[2:])
 	case "history": err=history(os.Args[2:])
+	case "workflow": err=workflow(os.Args[2:])
 	default: usage(); os.Exit(2)
 	}
 	if err!=nil { fmt.Fprintln(os.Stderr,"meta-dm:",err); os.Exit(1) }
 }
-func usage(){fmt.Println("meta-dm conversations");fmt.Println("meta-dm history <conversation_id> [--limit N] [--before ISO8601] [--all]")}
+func usage(){fmt.Println("meta-dm conversations");fmt.Println("meta-dm history <conversation_id> [--limit N] [--before ISO8601] [--all]");fmt.Println("meta-dm workflow run <conversation_id> [--before ISO8601] [--all]");fmt.Println("meta-dm workflow runs");fmt.Println("meta-dm workflow download <run_id> [--dir DIR]")}
+func gh(args ...string) error {
+	cmd := exec.Command("gh", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	return cmd.Run()
+}
+
+func workflow(args []string) error {
+	if len(args) == 0 { return errors.New("workflow subcommand is required: run, runs, download") }
+	switch args[0] {
+	case "run":
+		if len(args) < 2 { return errors.New("conversation_id is required") }
+		id := args[1]
+		fs := flag.NewFlagSet("workflow run", flag.ContinueOnError)
+		before := fs.String("before", "", "optional RFC3339 cutoff")
+		all := fs.Bool("all", true, "follow pagination toward older messages")
+		if err := fs.Parse(args[2:]); err != nil { return err }
+		cmdArgs := []string{"workflow", "run", ".github/workflows/dm-history.yml", "-f", "conversation_id="+id, "-f", "all="+strconv.FormatBool(*all)}
+		if *before != "" { cmdArgs = append(cmdArgs, "-f", "before="+*before) }
+		fmt.Printf("dispatching dm-history.yml for conversation=%s
+", id)
+		return gh(cmdArgs...)
+	case "runs":
+		return gh("run", "list", "--workflow", "dm-history.yml", "--limit", "10")
+	case "download":
+		if len(args) < 2 { return errors.New("run_id is required") }
+		fs := flag.NewFlagSet("workflow download", flag.ContinueOnError)
+		dir := fs.String("dir", "private-archive", "download directory")
+		if err := fs.Parse(args[2:]); err != nil { return err }
+		return gh("run", "download", args[1], "-D", *dir)
+	default:
+		return errors.New("unknown workflow subcommand: " + args[0])
+	}
+}
+
 func token()(string,error){v:=strings.TrimSpace(os.Getenv("META_ACCESS_TOKEN"));if v==""{return "",errors.New("META_ACCESS_TOKEN is required")};return v,nil}
 func base()string{v:=strings.TrimRight(os.Getenv("META_GRAPH_URL"),"/");if v==""{v="https://graph.facebook.com"};return v}
 func version()string{v:=strings.Trim(os.Getenv("META_GRAPH_VERSION"),"/ ");if v==""{v="v23.0"};return v}
