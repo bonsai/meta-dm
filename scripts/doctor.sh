@@ -34,8 +34,10 @@ section "go"
 go version
 go env GOPATH GOMOD
 go test ./...
+go vet ./...
 go build -o meta-dm ./cmd/meta-dm
-./meta-dm
+./meta-dm >/tmp/meta-dm-help.txt 2>&1 || true
+cat /tmp/meta-dm-help.txt
 
 section "github auth"
 gh auth status
