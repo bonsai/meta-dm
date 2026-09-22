@@ -1,17 +1,16 @@
 # Data Model
 
-The canonical internal representation is an event stream.
+## Canonical unit
 
-## Message event
+A retrieved message becomes one normalized event.
 
 ```json
 {
-  "event_id": "stable-local-event-id",
   "event_type": "message_received",
   "source": "instagram",
   "external_id": "META_MESSAGE_ID",
   "conversation_id": "META_CONVERSATION_ID",
-  "participant": {
+  "sender": {
     "external_id": "META_USER_ID"
   },
   "message": {
@@ -21,32 +20,25 @@ The canonical internal representation is an event stream.
 }
 ```
 
-## Storage
-
-Use JSONL for append-only events:
+## File layout
 
 ```text
-data/
-  raw/
-  events/
-  derived/
-  sync/
+data/messages/<conversation_id>.jsonl
+data/sync/<conversation_id>.json
 ```
 
-Do not publish real DM contents in a public repository. For a public demo, use synthetic fixtures.
+Each conversation has one append-only JSONL stream. A sync state records the latest retrieval run and enough cursor/state metadata to continue.
 
-## Idempotency
+## Deduplication
 
-The Meta external message/event identifier is the primary deduplication key. Replayed webhooks must not create duplicate canonical events.
+The primary deduplication key is the Meta external message/event identifier.
 
-## Derived data
+The local conversation file may therefore be safely rebuilt or extended from repeated API pages without creating duplicate messages.
 
-Examples:
+## Ordering
 
-- conversation summaries
-- intent labels
-- unanswered-message flags
-- response drafts
-- topic aggregates
+Persisted records should be normalized to chronological order for human inspection, while sync logic may fetch pages newest-first.
 
-Derived data always references the source event IDs.
+## Privacy
+
+Real DM text is sensitive. Production storage should be private. This public repository should contain only schemas, code, documentation, and synthetic fixtures.
