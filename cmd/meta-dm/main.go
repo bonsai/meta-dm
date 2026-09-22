@@ -66,8 +66,7 @@ func workflow(args []string) error {
 		if err := fs.Parse(args[2:]); err != nil { return err }
 		cmdArgs := []string{"workflow", "run", ".github/workflows/dm-history.yml", "-f", "conversation_id="+id, "-f", "all="+strconv.FormatBool(*all)}
 		if *before != "" { cmdArgs = append(cmdArgs, "-f", "before="+*before) }
-		fmt.Printf("dispatching dm-history.yml for conversation=%s
-", id)
+		fmt.Printf("dispatching dm-history.yml for conversation=%s\n", id)
 		return gh(cmdArgs...)
 	case "runs":
 		return gh("run", "list", "--workflow", "dm-history.yml", "--limit", "10")
