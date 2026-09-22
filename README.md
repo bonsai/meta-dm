@@ -1,79 +1,79 @@
 # meta-dm
 
-Instagram DM ingestion and analysis system for bons.ai.
+CLI skill for retrieving and preserving the history of a specific Instagram DM conversation.
 
-## Purpose
+## Primary purpose
 
-Collect messages from an Instagram Professional Account through Meta's official messaging interfaces, normalize them into an append-only event stream, and make the resulting data available to GitHub Actions / `gh aw` for analysis, classification, search, and response drafting.
-
-## Architecture
+The main job is **conversation history retrieval**:
 
 ```text
-Instagram DM
-   │
-   ├── Webhook ───────────────┐
-   │                          ▼
-   │                    ingest endpoint
-   │                          │
-   └── Messaging API ─────────┤
-                              ▼
-                         normalized DM
-                              │
-                              ▼
-                    data/dm/*.jsonl
-                              │
-                         gh aw / Actions
-                              │
-                 ┌────────────┼────────────┐
-                 ▼            ▼            ▼
-             classify       search      reply draft
-                 │            │            │
-                 └────────────┼────────────┘
-                              ▼
-                         GitHub Pages
+conversation_id
+  ↓
+Meta Messaging API
+  ↓
+paginate backwards
+  ↓
+normalize
+  ↓
+dedupe by external message ID
+  ↓
+append JSONL
+  ↓
+history → latest → now → action
 ```
 
-## CLI concept
+The skill is designed for an Instagram Professional Account controlled by the operator. It does not provide access to arbitrary users' private messages.
+
+## CLI
 
 ```bash
-meta-dm auth
-meta-dm account
-meta-dm sync
 meta-dm conversations
-meta-dm messages <conversation_id>
-meta-dm search "keyword"
-meta-dm export
+meta-dm history <conversation_id>
+meta-dm history <conversation_id> --limit 1000
+meta-dm history <conversation_id> --before 2026-01-01T00:00:00Z
+meta-dm history <conversation_id> --all
+meta-dm search <conversation_id> "keyword"
 ```
 
-The CLI is an interface over the canonical event data; it must not become the source of truth.
+### History semantics
 
-## Data principles
+`history` retrieves the newest available messages and follows pagination toward older messages.
 
-- Raw webhook/API payloads are retained separately from normalized records.
-- Normalized messages are append-only JSONL events.
-- IDs from Meta are preserved as external identifiers.
-- Timestamps remain ISO 8601.
-- Secrets and access tokens never enter Git history.
-- Analysis is derived data and can be regenerated.
-- Human messages and agent-generated drafts are different event types.
+- `--limit` limits normalized messages written during the run.
+- `--before` stops when messages reach the specified timestamp.
+- `--all` continues until the API has no older page.
+- Re-running is safe: existing Meta message IDs are deduplicated.
+- The local JSONL event stream is the canonical historical record.
 
-## Meta boundary
+## Storage
 
-This project targets an Instagram Professional Account controlled by the operator. It does not attempt to access arbitrary users' private messages.
+```text
+data/
+  messages/
+    <conversation_id>.jsonl
+  sync/
+    <conversation_id>.json
+```
 
-## Planned layers
+A message record keeps the Meta external ID, conversation ID, sender, timestamp, text when available, and source metadata.
 
-- `ontology/` — concepts and relations
-- `topology/` — system/world boundaries and interfaces
-- `agent.md` — this repository's agent definition
-- `docs/` — implementation and setup documentation
-- `data/` — local/generated event data; sensitive data should not be committed by default
-- `.github/workflows/` — scheduled or manually triggered synchronization and analysis
+Real DM contents should normally remain outside this public repository. Use a private repository or private storage for production data; public fixtures must be synthetic.
+
+## Skill boundary
+
+The skill does four things:
+
+1. identify a conversation;
+2. retrieve older messages by pagination;
+3. normalize and persist them;
+4. report sync state so the next run can continue safely.
+
+Webhook ingestion, classification, reply generation, and dashboards are secondary extensions, not the core skill.
 
 ## Security
 
-Use GitHub Actions secrets or an external secret manager for Meta credentials. Do not commit DM contents, access tokens, webhook secrets, or personally identifying exports to a public repository.
+Never put access tokens, app secrets, webhook verification tokens, or real DM exports in Git history. Prefer environment variables or GitHub Actions secrets.
 
-## Status
+## Development status
 
-Scaffold: architecture and data contract first. API credentials and webhook deployment are configured separately.
+The repository contains the skill contract and storage model. Meta API version, permissions, and exact endpoint parameters must be configured against the current official Meta documentation before production use.
