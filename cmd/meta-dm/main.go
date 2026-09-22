@@ -38,6 +38,7 @@ func main() {
 	if len(os.Args)<2 { usage(); os.Exit(2) }
 	var err error
 	switch os.Args[1] {
+	case "login": err=login(os.Args[2:])
 	case "conversations": err=conversations(os.Args[2:])
 	case "history": err=history(os.Args[2:])
 	case "workflow": err=workflow(os.Args[2:])
@@ -45,7 +46,7 @@ func main() {
 	}
 	if err!=nil { fmt.Fprintln(os.Stderr,"meta-dm:",err); os.Exit(1) }
 }
-func usage(){fmt.Println("meta-dm conversations");fmt.Println("meta-dm history <conversation_id> [--limit N] [--before ISO8601] [--all]");fmt.Println("meta-dm workflow run <conversation_id> [--before ISO8601] [--all]");fmt.Println("meta-dm workflow runs");fmt.Println("meta-dm workflow download <run_id> [--dir DIR]")}
+func usage(){fmt.Println("meta-dm login [--redirect URI] [--scope SCOPE]");fmt.Println("meta-dm conversations");fmt.Println("meta-dm history <conversation_id> [--limit N] [--before ISO8601] [--all]");fmt.Println("meta-dm workflow run <conversation_id> [--before ISO8601] [--all]");fmt.Println("meta-dm workflow runs");fmt.Println("meta-dm workflow download <run_id> [--dir DIR]")}
 func gh(args ...string) error {
 	cmd := exec.Command("gh", args...)
 	cmd.Stdout = os.Stdout
@@ -81,7 +82,12 @@ func workflow(args []string) error {
 	}
 }
 
-func token()(string,error){v:=strings.TrimSpace(os.Getenv("META_ACCESS_TOKEN"));if v==""{return "",errors.New("META_ACCESS_TOKEN is required")};return v,nil}
+func token()(string,error){
+	if v:=strings.TrimSpace(os.Getenv("META_ACCESS_TOKEN"));v!=""{return v,nil}
+	b,err:=os.ReadFile(filepath.Join(".meta-dm","token.json"));if err!=nil{return "",errors.New("META_ACCESS_TOKEN is required (or run: meta-dm login)")}
+	var t struct{AccessToken string `json:"access_token"`};if err:=json.Unmarshal(b,&t);err!=nil{return "",fmt.Errorf("read saved token: %w",err)}
+	if t.AccessToken==""{return "",errors.New("saved token is empty; run: meta-dm login")};return t.AccessToken,nil
+}
 func base()string{v:=strings.TrimRight(os.Getenv("META_GRAPH_URL"),"/");if v==""{v="https://graph.facebook.com"};return v}
 func version()string{v:=strings.Trim(os.Getenv("META_GRAPH_VERSION"),"/ ");if v==""{v="v23.0"};return v}
 func get(raw string)([]byte,error){
