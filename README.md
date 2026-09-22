@@ -77,3 +77,14 @@ Never put access tokens, app secrets, webhook verification tokens, or real DM ex
 ## Development status
 
 The repository contains the skill contract and storage model. Meta API version, permissions, and exact endpoint parameters must be configured against the current official Meta documentation before production use.
+
+
+## Postman / GitHub Actions / gh aw
+
+The repository now includes a manual Postman contract workflow at `.github/workflows/postman.yml`.
+
+The official Meta **Conversations API** Postman collection is the primary API reference for historical DM retrieval. It provides requests for conversation lists, finding a conversation, listing messages, and message details.
+
+Use Postman to validate the current Meta request contract; use the Go CLI for normal retrieval and JSONL persistence; use `gh aw` to orchestrate questions, API calls, persistence, and view updates.
+
+See [docs/postman-ghaw.md](docs/postman-ghaw.md).
