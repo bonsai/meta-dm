@@ -1,0 +1,52 @@
+name: meta-dm
+version: "0.1"
+domain: instagram_messaging
+
+entities:
+  account:
+    description: Instagram Professional Account connected to the Meta app.
+  conversation:
+    description: Message thread associated with an Instagram account.
+  participant:
+    description: Actor participating in a conversation.
+  message:
+    description: A message exchanged in a conversation.
+  event:
+    description: An observed state change or webhook/API observation.
+  draft:
+    description: Agent-generated candidate response; not a sent message.
+  sync:
+    description: A synchronization operation and its checkpoint.
+
+relations:
+  - subject: account
+    predicate: owns
+    object: conversation
+  - subject: conversation
+    predicate: contains
+    object: message
+  - subject: participant
+    predicate: sends
+    object: message
+  - subject: message
+    predicate: belongs_to
+    object: conversation
+  - subject: event
+    predicate: observes
+    object: message
+  - subject: draft
+    predicate: responds_to
+    object: message
+  - subject: sync
+    predicate: observes
+    object: event
+
+event_types:
+  - message_received
+  - message_sent
+  - conversation_observed
+  - webhook_received
+  - sync_started
+  - sync_completed
+  - sync_failed
+  - reply_drafted
