@@ -1,0 +1,59 @@
+name: Private DM History
+
+on:
+  workflow_dispatch:
+    inputs:
+      conversation_id:
+        description: "Instagram conversation ID"
+        required: true
+        type: string
+      all:
+        description: "Follow pagination toward older messages"
+        required: false
+        default: true
+        type: boolean
+      before:
+        description: "Optional RFC3339 cutoff"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "stable"
+
+      - name: Retrieve DM history
+        env:
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+          META_GRAPH_VERSION: ${{ secrets.META_GRAPH_VERSION }}
+        run: |
+          args="history ${{ inputs.conversation_id }} --all"
+          if [ -n "${{ inputs.before }}" ]; then
+            args="$args --before '${{ inputs.before }}'"
+          fi
+          go run ./cmd/meta-dm $args
+
+      - name: Build private archive
+        run: |
+          mkdir -p private-archive
+          cp -R data/messages private-archive/
+          cp -R data/sync private-archive/
+
+      - name: Upload private archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: dm-${{ inputs.conversation_id }}-${{ github.run_id }}
+          path: private-archive/
+          retention-days: 7
+          if-no-files-found: error
